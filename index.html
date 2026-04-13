@@ -783,7 +783,7 @@ function exportExcel() {
     ['Intermediárias',document.getElementById('pctInterm').value,  document.getElementById('qtdInterm').value,  parseVal(document.getElementById('custInterm').value),  parseVal(document.getElementById('custInterm').value)*(+document.getElementById('qtdInterm').value||0)],
     ['Saldo Devedor', document.getElementById('pctSaldo').value,   document.getElementById('qtdSaldo').value,   parseVal(document.getElementById('custSaldo').value),   parseVal(document.getElementById('custSaldo').value)*(+document.getElementById('qtdSaldo').value||1)],
     [],
-    ['TOTAL GERAL'['TOTAL GERAL', '', '', '', window._simTotal],
+    ['TOTAL GERAL', '', '', '', window._simTotal],
   ];
   const ws1 = XLSX.utils.aoa_to_sheet(resumo);
   ws1['!cols'] = [{wch:22},{wch:16},{wch:16},{wch:20},{wch:20}];
