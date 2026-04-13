@@ -182,6 +182,49 @@
   .start-date-row { margin-top: 14px; }
   .start-date-row .field { max-width: 220px; }
 
+  /* ── LIVE TOTAL BAR ── */
+  .live-total-bar {
+    display: none;
+    align-items: center;
+    gap: 0;
+    margin-top: 16px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--primary);
+    background: white;
+  }
+  .live-total-bar.visible { display: flex; flex-wrap: wrap; }
+  .live-total-cell {
+    flex: 1;
+    min-width: 150px;
+    padding: 13px 18px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .live-total-cell:last-child { border-right: none; }
+  .live-total-cell span {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 4px;
+  }
+  .live-total-cell strong {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .live-total-cell.highlight {
+    background: var(--primary);
+  }
+  .live-total-cell.highlight span { color: rgba(255,255,255,.75); }
+  .live-total-cell.highlight strong { color: white; font-size: 20px; }
+  .live-total-cell.ok    strong { color: var(--success); }
+  .live-total-cell.warn  strong { color: #D97706; }
+  .live-total-cell.error strong { color: var(--danger); }
+
   /* ── TOTALS SUMMARY ── */
   .summary-bar {
     display: none;
@@ -424,6 +467,22 @@
       <!-- % total warning -->
       <div id="pctWarning" style="display:none; margin-top:10px; padding:8px 12px; background:#FFF3CD; border-left:4px solid #F59E0B; border-radius:4px; font-size:12px; color:#92400E; font-weight:600;"></div>
 
+      <!-- LIVE TOTAL BAR -->
+      <div class="live-total-bar" id="liveTotalBar">
+        <div class="live-total-cell highlight">
+          <span>💰 Total da Proposta</span>
+          <strong id="liveTotalProposta">R$ 0,00</strong>
+        </div>
+        <div class="live-total-cell">
+          <span>🏠 Valor da Unidade</span>
+          <strong id="liveTotalUnidade">–</strong>
+        </div>
+        <div class="live-total-cell" id="liveDiffCell">
+          <span id="liveDiffLabel">Diferença</span>
+          <strong id="liveDiff">–</strong>
+        </div>
+      </div>
+
       <!-- Data de início -->
       <div class="start-date-row">
         <div class="field">
@@ -651,6 +710,29 @@ function recalcFromValue(tipo) {
     warn.style.display = 'block';
     warn.textContent = `⚠️ Atenção: a soma dos valores é ${totalPct.toFixed(1)}% do valor da unidade (deveria ser 100%).`;
   } else { warn.style.display = 'none'; }
+
+  // Live total bar
+  const totalProposta = tE + tM + tI + tS;
+  const diff = totalProposta - valor;
+  const bar  = document.getElementById('liveTotalBar');
+  bar.classList.add('visible');
+  document.getElementById('liveTotalProposta').textContent = fmtMoney(totalProposta);
+  document.getElementById('liveTotalUnidade').textContent  = fmtMoney(valor);
+  const diffEl   = document.getElementById('liveDiff');
+  const diffCell = document.getElementById('liveDiffCell');
+  const diffLbl  = document.getElementById('liveDiffLabel');
+  diffEl.textContent = (diff >= 0 ? '+' : '') + fmtMoney(diff);
+  diffCell.className = 'live-total-cell';
+  if (Math.abs(diff) < 1) {
+    diffLbl.textContent = '✅ Equilibrado';
+    diffCell.classList.add('ok');
+  } else if (diff > 0) {
+    diffLbl.textContent = '⬆️ Acima do valor';
+    diffCell.classList.add('warn');
+  } else {
+    diffLbl.textContent = '⬇️ Abaixo do valor';
+    diffCell.classList.add('error');
+  }
 }
 
 function simular() {
