@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Compra – CGMC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #1B4F8A;
+    --primary-dark: #123660;
+    --primary-light: #2E6CB5;
+    --accent: #4A90D9;
+    --bg: #F0F4F9;
+    --card-bg: #FFFFFF;
+    --border: #CBD8EA;
+    --text: #1A2740;
+    --text-secondary: #4A5A72;
+    --success: #1A7A4A;
+    --danger: #C0392B;
+    --shadow: 0 2px 10px rgba(27,79,138,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .logo-placeholder {
+    width: 80px; height: 60px;
+    background: rgba(255,255,255,0.15);
+    border: 2px dashed rgba(255,255,255,0.4);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: rgba(255,255,255,0.7); text-align: center;
+    cursor: pointer; transition: background .2s;
+    overflow: hidden;
+  }
+  .logo-placeholder:hover { background: rgba(255,255,255,0.22); }
+  .logo-placeholder img { width: 100%; height: 100%; object-fit: contain; }
+  header h1 { font-size: 22px; font-weight: 700; letter-spacing: .3px; }
+  header p { font-size: 13px; opacity: .8; margin-top: 2px; }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: 11px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .2px;
+  }
+  .card-body { padding: 20px; }
+
+  /* ── FORM GRID ── */
+  .form-row { display: grid; gap: 16px; margin-bottom: 16px; }
+  .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-row:last-child { margin-bottom: 0; }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text);
+    background: white;
+    transition: border-color .2s, box-shadow .2s;
+    outline: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(74,144,217,0.18);
+  }
+  .field input[readonly] { background: #F3F7FC; color: var(--text-secondary); }
+  .field textarea { resize: vertical; min-height: 80px; }
+
+  /* unit info badge */
+  .unit-info {
+    display: none;
+    background: #EAF2FB;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 12px;
+  }
+  .unit-info.visible { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .unit-info-item { }
+  .unit-info-item span { display: block; font-size: 11px; font-weight: 600; color: var(--primary); text-transform: uppercase; }
+  .unit-info-item strong { font-size: 15px; color: var(--text); }
+
+  /* ── PAYMENT CONDITIONS ── */
+  .cond-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .cond-block {
+    background: #F3F7FC;
+    border-radius: 8px;
+    padding: 0;
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+  }
+  .cond-block h4 {
+    font-size: 12px; font-weight: 700; color: white;
+    text-transform: uppercase; letter-spacing: .4px;
+    background: var(--primary-light);
+    padding: 8px 14px; margin: 0;
+  }
+  /* Quadro fixo — valores da tabela */
+  .cond-table {
+    background: #EAF2FB;
+    border-bottom: 2px dashed var(--border);
+    padding: 10px 14px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .cond-table-item {
+    flex: 1; min-width: 80px;
+  }
+  .cond-table-item span {
+    display: block; font-size: 10px; font-weight: 700;
+    color: var(--primary); text-transform: uppercase; letter-spacing: .4px;
+    margin-bottom: 2px;
+  }
+  .cond-table-item strong {
+    font-size: 13px; color: var(--text);
+  }
+  /* Quadro editável — valor personalizado */
+  .cond-custom {
+    padding: 10px 14px;
+    display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;
+  }
+  .cond-custom .field { flex: 1; min-width: 80px; }
+  .cond-custom label {
+    display: block; font-size: 10px; font-weight: 700;
+    color: var(--text-secondary); text-transform: uppercase;
+    letter-spacing: .3px; margin-bottom: 4px;
+  }
+  .cond-custom input {
+    width: 100%; padding: 7px 10px;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: 13px; color: var(--text); background: white;
+    transition: border-color .2s; outline: none;
+  }
+  .cond-custom input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,144,217,0.15); }
+  .cond-custom input[readonly] { background: #F0F6FF; color: var(--primary); font-weight: 700; }
+  .pct-calc-badge {
+    display: inline-block; background: #DBEAFE; color: #1D4ED8;
+    border-radius: 5px; font-size: 12px; font-weight: 700;
+    padding: 6px 10px; align-self: flex-end; white-space: nowrap;
+  }
+
+  .start-date-row { margin-top: 14px; }
+  .start-date-row .field { max-width: 220px; }
+
+  /* ── TOTALS SUMMARY ── */
+  .summary-bar {
+    display: none;
+    background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 22px;
+    gap: 0;
+  }
+  .summary-bar.visible { display: flex; flex-wrap: wrap; gap: 6px 0; }
+  .summary-item { flex: 1; min-width: 140px; text-align: center; padding: 6px 12px; border-right: 1px solid rgba(255,255,255,0.2); }
+  .summary-item:last-child { border-right: none; }
+  .summary-item span { display: block; font-size: 11px; opacity: .75; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
+  .summary-item strong { font-size: 18px; font-weight: 700; }
+
+  /* ── BUTTON ROW ── */
+  .btn-row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  .btn {
+    padding: 11px 24px;
+    border: none; border-radius: 7px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: background .2s, transform .1s;
+    letter-spacing: .3px;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--primary); color: white; flex: 1; font-size: 15px; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #145c37; }
+  .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-outline:hover { background: #EAF2FB; }
+
+  /* ── SCHEDULE TABLE ── */
+  .result-section { display: none; }
+  .result-section.visible { display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--primary);
+    color: white;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  thead th:last-child { text-align: right; }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid #E8EEF5; }
+  tbody tr:hover { background: #F5F9FF; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.money { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .badge-entrada  { background: #DBEAFE; color: #1D4ED8; }
+  .badge-mensal   { background: #D1FAE5; color: #065F46; }
+  .badge-interm   { background: #FEF3C7; color: #92400E; }
+  .badge-saldo    { background: #FFE4E6; color: #9F1239; }
+
+  tfoot td {
+    padding: 10px 12px;
+    font-weight: 700;
+    background: #EAF2FB;
+    border-top: 2px solid var(--primary);
+    font-size: 13px;
+  }
+  tfoot td.money { text-align: right; color: var(--primary); font-size: 15px; }
+
+  /* ── DISCLAIMER ── */
+  .disclaimer {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: #F8FAFC;
+    border-left: 3px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  /* ── PRINT STYLES ── */
+  @media print {
+    body { background: white; font-size: 12px; }
+    header { background: #1B4F8A !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 12px 20px; }
+    .container { max-width: 100%; padding: 12px; }
+    .card { box-shadow: none; border: 1px solid #CBD8EA; page-break-inside: avoid; margin-bottom: 14px; }
+    .card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .summary-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print, .btn-row { display: none !important; }
+    .result-section { display: block !important; }
+    .summary-bar.visible { display: flex !important; }
+    table { font-size: 11px; }
+    td, th { padding: 6px 8px !important; }
+    .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div id="logoBox" style="cursor:pointer" onclick="document.getElementById('logoInput').click()" title="Clique para trocar a logo">
+    <img id="logoImg" src="data:image/png;base64,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" alt="Tectaris Incorporadora" style="height:60px; display:block;">
+  </div>
+  <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="loadLogo(event)">
+  <div>
+    <h1>Simulador de Compra – CGMC</h1>
+    <p>Tabela Pré-Lançamento · Condições sujeitas a alteração sem aviso prévio</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- DADOS DO CORRETOR -->
+  <div class="card no-print" id="cardCorretor">
+    <div class="card-header">Dados do Corretor</div>
+    <div class="card-body">
+      <div class="form-row cols-3">
+        <div class="field"><label>Gestor</label><input type="text" id="gestorHVM" placeholder="Nome do gestor"></div>
+        <div class="field"><label>Imobiliária / Corretor</label><input type="text" id="imobiliaria" placeholder="Nome da imobiliária ou corretor"></div>
+        <div class="field"><label>CRECI</label><input type="text" id="creci" placeholder="Número CRECI"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DADOS DO PROPONENTE -->
+  <div class="card">
+    <div class="card-header">Dados do Proponente</div>
+    <div class="card-body">
+      <div class="form-row cols-3">
+        <div class="field"><label>Nome do Proponente</label><input type="text" id="nomeProponente" placeholder="Nome completo"></div>
+        <div class="field"><label>CPF / CNPJ</label><input type="text" id="cpf" placeholder="000.000.000-00"></div>
+        <div class="field"><label>Telefone</label><input type="text" id="telefone" placeholder="(00) 00000-0000"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="field"><label>E-mail</label><input type="email" id="email" placeholder="email@exemplo.com"></div>
+        <div class="field"><label>Data da Proposta</label><input type="date" id="dataProposta"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELEÇÃO DE UNIDADE -->
+  <div class="card">
+    <div class="card-header">Seleção de Unidade</div>
+    <div class="card-body">
+      <div class="form-row cols-2">
+        <div class="field">
+          <label>Andar</label>
+          <select id="selAndar" onchange="updateUnidades()">
+            <option value="">— Selecione o andar —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Unidade</label>
+          <select id="selUnidade" onchange="onUnidadeSelected()" disabled>
+            <option value="">— Selecione a unidade —</option>
+          </select>
+        </div>
+      </div>
+      <!-- Unit info panel -->
+      <div class="unit-info" id="unitInfo">
+        <div class="unit-info-item"><span>Área Privativa</span><strong id="infoArea">–</strong></div>
+        <div class="unit-info-item"><span>Valor m²</span><strong id="infoValorM2">–</strong></div>
+        <div class="unit-info-item"><span>Valor Total</span><strong id="infoValor">–</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONDIÇÕES DE PAGAMENTO -->
+  <div class="card">
+    <div class="card-header">Condições de Pagamento</div>
+    <div class="card-body">
+      <div class="cond-grid">
+        <!-- ENTRADA -->
+        <div class="cond-block">
+          <h4>Entrada</h4>
+          <div class="cond-table">
+            <div class="cond-table-item"><span>Valor Tabela (por parcela)</span><strong id="tblEntrada">–</strong></div>
+            <div class="cond-table-item"><span>Parcelas</span><strong id="tblQtdEntrada">–</strong></div>
+            <div class="cond-table-item"><span>% Padrão</span><strong id="tblPctEntrada">–</strong></div>
+          </div>
+          <div class="cond-custom">
+            <div class="field"><label>Valor p/ parcela</label><input type="text" id="custEntrada" placeholder="0,00" oninput="recalcFromValue('entrada')"></div>
+            <div class="field"><label>Parcelas</label><input type="number" id="qtdEntrada" value="1" min="1" max="24" oninput="recalcFromValue('entrada')"></div>
+            <div class="field"><label>% Calculado</label><input type="text" id="pctEntrada" readonly></div>
+          </div>
+        </div>
+        <!-- MENSAIS -->
+        <div class="cond-block">
+          <h4>Mensais (Obra)</h4>
+          <div class="cond-table">
+            <div class="cond-table-item"><span>Valor Tabela (por parcela)</span><strong id="tblMensais">–</strong></div>
+            <div class="cond-table-item"><span>Parcelas</span><strong id="tblQtdMensais">–</strong></div>
+            <div class="cond-table-item"><span>% Padrão</span><strong id="tblPctMensais">–</strong></div>
+          </div>
+          <div class="cond-custom">
+            <div class="field"><label>Valor p/ parcela</label><input type="text" id="custMensais" placeholder="0,00" oninput="recalcFromValue('mensais')"></div>
+            <div class="field"><label>Parcelas</label><input type="number" id="qtdMensais" value="40" min="1" max="120" oninput="recalcFromValue('mensais')"></div>
+            <div class="field"><label>% Calculado</label><input type="text" id="pctMensais" readonly></div>
+          </div>
+        </div>
+        <!-- INTERMEDIÁRIAS -->
+        <div class="cond-block">
+          <h4>Intermediárias</h4>
+          <div class="cond-table">
+            <div class="cond-table-item"><span>Valor Tabela (por parcela)</span><strong id="tblInterm">–</strong></div>
+            <div class="cond-table-item"><span>Qtd</span><strong id="tblQtdInterm">–</strong></div>
+            <div class="cond-table-item"><span>% Padrão</span><strong id="tblPctInterm">–</strong></div>
+          </div>
+          <div class="cond-custom">
+            <div class="field"><label>Valor p/ parcela</label><input type="text" id="custInterm" placeholder="0,00" oninput="recalcFromValue('interm')"></div>
+            <div class="field"><label>Qtd</label><input type="number" id="qtdInterm" value="4" min="0" max="24" oninput="recalcFromValue('interm')"></div>
+            <div class="field"><label>% Calculado</label><input type="text" id="pctInterm" readonly></div>
+          </div>
+        </div>
+        <!-- SALDO -->
+        <div class="cond-block">
+          <h4>Saldo Devedor (Chaves)</h4>
+          <div class="cond-table">
+            <div class="cond-table-item"><span>Valor Tabela (por parcela)</span><strong id="tblSaldo">–</strong></div>
+            <div class="cond-table-item"><span>Parcelas</span><strong id="tblQtdSaldo">–</strong></div>
+            <div class="cond-table-item"><span>% Padrão</span><strong id="tblPctSaldo">–</strong></div>
+          </div>
+          <div class="cond-custom">
+            <div class="field"><label>Valor p/ parcela</label><input type="text" id="custSaldo" placeholder="0,00" oninput="recalcFromValue('saldo')"></div>
+            <div class="field"><label>Parcelas</label><input type="number" id="qtdSaldo" value="1" min="1" max="12" oninput="recalcFromValue('saldo')"></div>
+            <div class="field"><label>% Calculado</label><input type="text" id="pctSaldo" readonly></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- % total warning -->
+      <div id="pctWarning" style="display:none; margin-top:10px; padding:8px 12px; background:#FFF3CD; border-left:4px solid #F59E0B; border-radius:4px; font-size:12px; color:#92400E; font-weight:600;"></div>
+
+      <!-- Data de início -->
+      <div class="start-date-row">
+        <div class="field">
+          <label>Data do 1º Pagamento (Entrada)</label>
+          <input type="date" id="dataInicio">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBSERVAÇÕES -->
+  <div class="card no-print">
+    <div class="card-header">Observações</div>
+    <div class="card-body">
+      <div class="field">
+        <textarea id="observacoes" rows="3" placeholder="Digite aqui alguma observação sobre a proposta..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULAR BUTTON -->
+  <div class="btn-row no-print">
+    <button class="btn btn-primary" onclick="simular()">▶ Simular Pagamento</button>
+  </div>
+
+  <!-- SUMMARY BAR -->
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-item"><span>Valor da Unidade</span><strong id="sumValor">–</strong></div>
+    <div class="summary-item"><span>Entrada</span><strong id="sumEntrada">–</strong></div>
+    <div class="summary-item"><span>Total Mensais</span><strong id="sumMensais">–</strong></div>
+    <div class="summary-item"><span>Total Intermediárias</span><strong id="sumInterm">–</strong></div>
+    <div class="summary-item"><span>Saldo (Chaves)</span><strong id="sumSaldo">–</strong></div>
+  </div>
+
+  <!-- SCHEDULE RESULT -->
+  <div class="result-section" id="resultSection">
+    <div class="card">
+      <div class="card-header">Fluxo de Pagamento</div>
+      <div class="card-body" style="padding: 0;">
+        <div style="overflow-x:auto;">
+          <table id="scheduleTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th style="text-align:right">Valor (R$)</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleBody"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3"><strong>Total Geral</strong></td>
+                <td class="money" id="scheduleTotal">–</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="btn-row no-print">
+      <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+      <button class="btn btn-success" onclick="exportExcel()">📥 Exportar Excel</button>
+    </div>
+
+    <!-- DISCLAIMER -->
+    <div class="disclaimer">
+      A) As parcelas serão reajustadas pela variação do INCC e, a partir da entrega, pelo IPCA, com base no mês anterior à assinatura do contrato e ao mês anterior a cada evento, conforme contrato. B) Condição válida conforme disponibilidade de unidades. Este documento é uma <strong>simulação de condição de pagamento</strong>, não garantindo a venda. C) Valores sujeitos a alteração sem aviso prévio.
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════
+const UNITS = [{"unidade":"101","posicao":"N","area":75.11,"valorM2":15800.0,"valor":1186738.0,"entrada":142408.56,"mensais":5933.69,"intermediarias":53403.21,"saldo":593369.0},{"unidade":"102","posicao":"P","area":72.57,"valorM2":15500.0,"valor":1124835.0,"entrada":134980.2,"mensais":5624.18,"intermediarias":50617.57,"saldo":562417.5},{"unidade":"103","posicao":"N","area":60.78,"valorM2":15600.0,"valor":948168.0,"entrada":113780.16,"mensais":4740.84,"intermediarias":42667.56,"saldo":474084.0},{"unidade":"104","posicao":"P","area":60.78,"valorM2":15500.0,"valor":942090.0,"entrada":113050.8,"mensais":4710.45,"intermediarias":42394.05,"saldo":471045.0},{"unidade":"105","posicao":"N","area":60.78,"valorM2":15600.0,"valor":948168.0,"entrada":113780.16,"mensais":4740.84,"intermediarias":42667.56,"saldo":474084.0},{"unidade":"106","posicao":"P","area":64.52,"valorM2":15500.0,"valor":1000060.0,"entrada":120007.2,"mensais":5000.3,"intermediarias":45002.7,"saldo":500030.0},{"unidade":"107","posicao":"N","area":60.78,"valorM2":15600.0,"valor":948168.0,"entrada":113780.16,"mensais":4740.84,"intermediarias":42667.56,"saldo":474084.0},{"unidade":"108","posicao":"P","area":69.77,"valorM2":15500.0,"valor":1081435.0,"entrada":129772.2,"mensais":5407.18,"intermediarias":48664.57,"saldo":540717.5},{"unidade":"109","posicao":"N","area":93.47,"valorM2":15600.0,"valor":1458132.0,"entrada":174975.84,"mensais":7290.66,"intermediarias":65615.94,"saldo":729066.0},{"unidade":"110","posicao":"P","area":48.62,"valorM2":15500.0,"valor":753610.0,"entrada":90433.2,"mensais":3768.05,"intermediarias":33912.45,"saldo":376805.0},{"unidade":"111","posicao":"N","area":78.07,"valorM2":15600.0,"valor":1217892.0,"entrada":146147.04,"mensais":6089.46,"intermediarias":54805.14,"saldo":608946.0},{"unidade":"112","posicao":"P","area":48.59,"valorM2":15500.0,"valor":753145.0,"entrada":90377.4,"mensais":3765.72,"intermediarias":33891.53,"saldo":376572.5},{"unidade":"113","posicao":"N","area":53.48,"valorM2":15600.0,"valor":834288.0,"entrada":100114.56,"mensais":4171.44,"intermediarias":37542.96,"saldo":417144.0},{"unidade":"114","posicao":"P","area":60.33,"valorM2":15500.0,"valor":935115.0,"entrada":112213.8,"mensais":4675.57,"intermediarias":42080.17,"saldo":467557.5},{"unidade":"115","posicao":"N","area":99.93,"valorM2":15600.0,"valor":1558908.0,"entrada":187068.96,"mensais":7794.54,"intermediarias":70150.86,"saldo":779454.0},{"unidade":"116","posicao":"P","area":58.45,"valorM2":15500.0,"valor":905975.0,"entrada":108717.0,"mensais":4529.88,"intermediarias":40768.88,"saldo":452987.5},{"unidade":"117","posicao":"N","area":100.29,"valorM2":15600.0,"valor":1564524.0,"entrada":187742.88,"mensais":7822.62,"intermediarias":70403.58,"saldo":782262.0},{"unidade":"118","posicao":"P","area":51.43,"valorM2":15500.0,"valor":797165.0,"entrada":95659.8,"mensais":3985.82,"intermediarias":35872.42,"saldo":398582.5},{"unidade":"119","posicao":"N","area":53.48,"valorM2":15600.0,"valor":834288.0,"entrada":100114.56,"mensais":4171.44,"intermediarias":37542.96,"saldo":417144.0},{"unidade":"120","posicao":"P","area":53.48,"valorM2":15500.0,"valor":828940.0,"entrada":99472.8,"mensais":4144.7,"intermediarias":37302.3,"saldo":414470.0},{"unidade":"121","posicao":"N","area":84.01,"valorM2":15989.6,"valor":1343286.3,"entrada":161194.36,"mensais":6716.43,"intermediarias":60447.88,"saldo":671643.15},{"unidade":"122","posicao":"P","area":84.01,"valorM2":15686.0,"valor":1317780.86,"entrada":158133.7,"mensais":6588.9,"intermediarias":59300.14,"saldo":658890.43},{"unidade":"201","posicao":"N","area":75.11,"valorM2":15900.0,"valor":1194249.0,"entrada":143309.88,"mensais":5971.25,"intermediarias":53741.2,"saldo":597124.5},{"unidade":"202","posicao":"P","area":72.57,"valorM2":15800.0,"valor":1146606.0,"entrada":137592.72,"mensais":5733.03,"intermediarias":51597.27,"saldo":573303.0},{"unidade":"203","posicao":"N","area":60.78,"valorM2":14900.0,"valor":905622.0,"entrada":108674.64,"mensais":4528.11,"intermediarias":40752.99,"saldo":452811.0},{"unidade":"204","posicao":"P","area":60.78,"valorM2":14700.0,"valor":893466.0,"entrada":107215.92,"mensais":4467.33,"intermediarias":40205.97,"saldo":446733.0},{"unidade":"205","posicao":"N","area":60.78,"valorM2":14900.0,"valor":905622.0,"entrada":108674.64,"mensais":4528.11,"intermediarias":40752.99,"saldo":452811.0},{"unidade":"206","posicao":"P","area":64.52,"valorM2":14700.0,"valor":948444.0,"entrada":113813.28,"mensais":4742.22,"intermediarias":42679.98,"saldo":474222.0},{"unidade":"207","posicao":"N","area":60.78,"valorM2":14900.0,"valor":905622.0,"entrada":108674.64,"mensais":4528.11,"intermediarias":40752.99,"saldo":452811.0},{"unidade":"208","posicao":"P","area":69.77,"valorM2":14700.0,"valor":1025619.0,"entrada":123074.28,"mensais":5128.09,"intermediarias":46152.85,"saldo":512809.5},{"unidade":"209","posicao":"N","area":93.47,"valorM2":14900.0,"valor":1392703.0,"entrada":167124.36,"mensais":6963.52,"intermediarias":62671.63,"saldo":696351.5},{"unidade":"210","posicao":"P","area":48.62,"valorM2":14700.0,"valor":714714.0,"entrada":85765.68,"mensais":3573.57,"intermediarias":32162.13,"saldo":357357.0},{"unidade":"211","posicao":"N","area":78.07,"valorM2":14900.0,"valor":1163243.0,"entrada":139589.16,"mensais":5816.22,"intermediarias":52345.93,"saldo":581621.5},{"unidade":"212","posicao":"P","area":48.59,"valorM2":14700.0,"valor":714273.0,"entrada":85712.76,"mensais":3571.37,"intermediarias":32142.28,"saldo":357136.5},{"unidade":"213","posicao":"N","area":53.48,"valorM2":14900.0,"valor":796852.0,"entrada":95622.24,"mensais":3984.26,"intermediarias":35858.34,"saldo":398426.0},{"unidade":"214","posicao":"P","area":60.33,"valorM2":14700.0,"valor":886851.0,"entrada":106422.12,"mensais":4434.26,"intermediarias":39908.29,"saldo":443425.5},{"unidade":"215","posicao":"N","area":99.93,"valorM2":14900.0,"valor":1488957.0,"entrada":178674.84,"mensais":7444.79,"intermediarias":67003.07,"saldo":744478.5},{"unidade":"216","posicao":"P","area":58.45,"valorM2":14700.0,"valor":859215.0,"entrada":103105.8,"mensais":4296.07,"intermediarias":38664.67,"saldo":429607.5},{"unidade":"217","posicao":"N","area":100.29,"valorM2":14900.0,"valor":1494321.0,"entrada":179318.52,"mensais":7471.61,"intermediarias":67244.44,"saldo":747160.5},{"unidade":"218","posicao":"P","area":51.43,"valorM2":14700.0,"valor":756021.0,"entrada":90722.52,"mensais":3780.11,"intermediarias":34020.94,"saldo":378010.5},{"unidade":"219","posicao":"N","area":53.48,"valorM2":14900.0,"valor":796852.0,"entrada":95622.24,"mensais":3984.26,"intermediarias":35858.34,"saldo":398426.0},{"unidade":"220","posicao":"P","area":53.48,"valorM2":14700.0,"valor":786156.0,"entrada":94338.72,"mensais":3930.78,"intermediarias":35377.02,"saldo":393078.0},{"unidade":"221","posicao":"N","area":84.01,"valorM2":15900.0,"valor":1335759.0,"entrada":160291.08,"mensais":6678.8,"intermediarias":60109.15,"saldo":667879.5},{"unidade":"222","posicao":"P","area":84.01,"valorM2":15800.0,"valor":1327358.0,"entrada":159282.96,"mensais":6636.79,"intermediarias":59731.11,"saldo":663679.0},{"unidade":"301","posicao":"N","area":75.11,"valorM2":16181.48,"valor":1215390.6,"entrada":145846.87,"mensais":6076.95,"intermediarias":54692.58,"saldo":607695.3},{"unidade":"302","posicao":"P","area":72.57,"valorM2":15874.23,"valor":1151993.02,"entrada":138239.16,"mensais":5759.97,"intermediarias":51839.69,"saldo":575996.51},{"unidade":"303","posicao":"N","area":60.78,"valorM2":15976.65,"valor":971060.57,"entrada":116527.27,"mensais":4855.3,"intermediarias":43697.73,"saldo":485530.28},{"unidade":"304","posicao":"P","area":60.78,"valorM2":15874.23,"valor":964835.82,"entrada":115780.3,"mensais":4824.18,"intermediarias":43417.61,"saldo":482417.91},{"unidade":"305","posicao":"N","area":60.78,"valorM2":15976.65,"valor":971060.57,"entrada":116527.27,"mensais":4855.3,"intermediarias":43697.73,"saldo":485530.28},{"unidade":"306","posicao":"P","area":64.52,"valorM2":15874.23,"valor":1024205.45,"entrada":122904.65,"mensais":5121.03,"intermediarias":46089.25,"saldo":512102.72},{"unidade":"307","posicao":"N","area":60.78,"valorM2":15976.65,"valor":971060.57,"entrada":116527.27,"mensais":4855.3,"intermediarias":43697.73,"saldo":485530.28},{"unidade":"308","posicao":"P","area":69.77,"valorM2":15874.23,"valor":1107545.17,"entrada":132905.42,"mensais":5537.73,"intermediarias":49839.53,"saldo":553772.58},{"unidade":"309","posicao":"N","area":93.47,"valorM2":15976.65,"valor":1493337.14,"entrada":179200.46,"mensais":7466.69,"intermediarias":67200.17,"saldo":746668.57},{"unidade":"310","posicao":"P","area":48.62,"valorM2":15874.23,"valor":771805.16,"entrada":92616.62,"mensais":3859.03,"intermediarias":34731.23,"saldo":385902.58},{"unidade":"311","posicao":"N","area":78.07,"valorM2":15976.65,"valor":1247296.78,"entrada":149675.61,"mensais":6236.48,"intermediarias":56128.36,"saldo":623648.39},{"unidade":"312","posicao":"P","area":48.59,"valorM2":15874.23,"valor":771328.93,"entrada":92559.47,"mensais":3856.64,"intermediarias":34709.8,"saldo":385664.47},{"unidade":"313","posicao":"N","area":53.48,"valorM2":15976.65,"valor":854431.05,"entrada":102531.73,"mensais":4272.16,"intermediarias":38449.4,"saldo":427215.52},{"unidade":"314","posicao":"P","area":60.33,"valorM2":15874.23,"valor":957692.42,"entrada":114923.09,"mensais":4788.46,"intermediarias":43096.16,"saldo":478846.21},{"unidade":"315","posicao":"N","area":99.93,"valorM2":15976.65,"valor":1596546.27,"entrada":191585.55,"mensais":7982.73,"intermediarias":71844.58,"saldo":798273.14},{"unidade":"316","posicao":"P","area":58.45,"valorM2":15874.23,"valor":927848.86,"entrada":111341.86,"mensais":4639.24,"intermediarias":41753.2,"saldo":463924.43},{"unidade":"317","posicao":"N","area":100.29,"valorM2":15976.65,"valor":1602297.87,"entrada":192275.74,"mensais":8011.49,"intermediarias":72103.4,"saldo":801148.93},{"unidade":"318","posicao":"P","area":51.43,"valorM2":15874.23,"valor":816411.75,"entrada":97969.41,"mensais":4082.06,"intermediarias":36738.53,"saldo":408205.88},{"unidade":"319","posicao":"N","area":53.48,"valorM2":15976.65,"valor":854431.05,"entrada":102531.73,"mensais":4272.16,"intermediarias":38449.4,"saldo":427215.52},{"unidade":"320","posicao":"P","area":53.48,"valorM2":15874.23,"valor":848953.93,"entrada":101874.47,"mensais":4244.77,"intermediarias":38202.93,"saldo":424476.96},{"unidade":"321","posicao":"N","area":84.01,"valorM2":16375.65,"valor":1375718.6,"entrada":165086.23,"mensais":6878.59,"intermediarias":61907.34,"saldo":687859.3},{"unidade":"322","posicao":"P","area":84.01,"valorM2":16064.72,"valor":1349597.36,"entrada":161951.68,"mensais":6747.99,"intermediarias":60731.88,"saldo":674798.68},{"unidade":"401","posicao":"N","area":75.11,"valorM2":16375.65,"valor":1229975.29,"entrada":147597.03,"mensais":6149.88,"intermediarias":55348.89,"saldo":614987.64},{"unidade":"402","posicao":"P","area":72.57,"valorM2":16064.72,"valor":1165816.93,"entrada":139898.03,"mensais":5829.08,"intermediarias":52461.76,"saldo":582908.47},{"unidade":"403","posicao":"N","area":60.78,"valorM2":16168.37,"valor":982713.3,"entrada":117925.6,"mensais":4913.57,"intermediarias":44222.1,"saldo":491356.65},{"unidade":"404","posicao":"P","area":60.78,"valorM2":16064.72,"valor":976413.85,"entrada":117169.66,"mensais":4882.07,"intermediarias":43938.62,"saldo":488206.93},{"unidade":"405","posicao":"N","area":60.78,"valorM2":16168.37,"valor":982713.3,"entrada":117925.6,"mensais":4913.57,"intermediarias":44222.1,"saldo":491356.65},{"unidade":"406","posicao":"P","area":64.52,"valorM2":16064.72,"valor":1036495.91,"entrada":124379.51,"mensais":5182.48,"intermediarias":46642.32,"saldo":518247.96},{"unidade":"407","posicao":"N","area":60.78,"valorM2":16168.37,"valor":982713.3,"entrada":117925.6,"mensais":4913.57,"intermediarias":44222.1,"saldo":491356.65},{"unidade":"408","posicao":"P","area":69.77,"valorM2":16064.72,"valor":1120835.71,"entrada":134500.29,"mensais":5604.18,"intermediarias":50437.61,"saldo":560417.85},{"unidade":"409","posicao":"N","area":93.47,"valorM2":16168.37,"valor":1511257.18,"entrada":181350.86,"mensais":7556.29,"intermediarias":68006.57,"saldo":755628.59},{"unidade":"410","posicao":"P","area":48.62,"valorM2":16080.0,"valor":781809.6,"entrada":93817.15,"mensais":3909.05,"intermediarias":35181.43,"saldo":390904.8},{"unidade":"411","posicao":"N","area":78.07,"valorM2":16168.37,"valor":1262264.35,"entrada":151471.72,"mensais":6311.32,"intermediarias":56801.9,"saldo":631132.17},{"unidade":"412","posicao":"P","area":48.59,"valorM2":16090.0,"valor":781813.1,"entrada":93817.57,"mensais":3909.07,"intermediarias":35181.59,"saldo":390906.55},{"unidade":"413","posicao":"N","area":53.48,"valorM2":16168.37,"valor":864684.22,"entrada":103762.11,"mensais":4323.42,"intermediarias":38910.79,"saldo":432342.11},{"unidade":"414","posicao":"P","area":60.33,"valorM2":16064.72,"valor":969184.73,"entrada":116302.17,"mensais":4845.92,"intermediarias":43613.31,"saldo":484592.36},{"unidade":"415","posicao":"N","area":99.93,"valorM2":16168.37,"valor":1615704.83,"entrada":193884.58,"mensais":8078.52,"intermediarias":72706.72,"saldo":807852.42},{"unidade":"416","posicao":"P","area":58.45,"valorM2":16064.72,"valor":938983.05,"entrada":112677.97,"mensais":4694.92,"intermediarias":42254.24,"saldo":469491.52},{"unidade":"417","posicao":"N","area":100.29,"valorM2":16168.37,"valor":1621525.44,"entrada":194583.05,"mensais":8107.63,"intermediarias":72968.64,"saldo":810762.72},{"unidade":"418","posicao":"P","area":51.43,"valorM2":16070.0,"valor":826480.1,"entrada":99177.61,"mensais":4132.4,"intermediarias":37191.6,"saldo":413240.05},{"unidade":"419","posicao":"N","area":53.48,"valorM2":16168.37,"valor":864684.22,"entrada":103762.11,"mensais":4323.42,"intermediarias":38910.79,"saldo":432342.11},{"unidade":"420","posicao":"P","area":53.48,"valorM2":16064.72,"valor":859141.37,"entrada":103096.96,"mensais":4295.71,"intermediarias":38661.36,"saldo":429570.69},{"unidade":"421","posicao":"N","area":84.01,"valorM2":16572.16,"valor":1392227.22,"entrada":167067.27,"mensais":6961.14,"intermediarias":62650.23,"saldo":696113.61},{"unidade":"422","posicao":"P","area":84.01,"valorM2":16257.5,"valor":1365792.53,"entrada":163895.1,"mensais":6828.96,"intermediarias":61460.66,"saldo":682896.26},{"unidade":"501","posicao":"N","area":75.11,"valorM2":16572.16,"valor":1244734.99,"entrada":149368.2,"mensais":6223.67,"intermediarias":56013.07,"saldo":622367.5},{"unidade":"502","posicao":"P","area":72.57,"valorM2":16257.5,"valor":1179806.74,"entrada":141576.81,"mensais":5899.03,"intermediarias":53091.3,"saldo":589903.37},{"unidade":"503","posicao":"N","area":60.78,"valorM2":16362.39,"valor":994505.85,"entrada":119340.7,"mensais":4972.53,"intermediarias":44752.76,"saldo":497252.93},{"unidade":"504","posicao":"P","area":60.78,"valorM2":16257.5,"valor":988130.82,"entrada":118575.7,"mensais":4940.65,"intermediarias":44465.89,"saldo":494065.41},{"unidade":"505","posicao":"N","area":60.78,"valorM2":16362.39,"valor":994505.85,"entrada":119340.7,"mensais":4972.53,"intermediarias":44752.76,"saldo":497252.93},{"unidade":"506","posicao":"P","area":64.52,"valorM2":16257.5,"valor":1048933.86,"entrada":125872.06,"mensais":5244.67,"intermediarias":47202.02,"saldo":524466.93},{"unidade":"507","posicao":"N","area":60.78,"valorM2":16362.39,"valor":994505.85,"entrada":119340.7,"mensais":4972.53,"intermediarias":44752.76,"saldo":497252.93},{"unidade":"508","posicao":"P","area":69.77,"valorM2":16257.5,"valor":1134285.74,"entrada":136114.29,"mensais":5671.43,"intermediarias":51042.86,"saldo":567142.87},{"unidade":"509","posicao":"N","area":93.47,"valorM2":16362.39,"valor":1529392.27,"entrada":183527.07,"mensais":7646.96,"intermediarias":68822.65,"saldo":764696.14},{"unidade":"510","posicao":"P","area":48.62,"valorM2":16300.0,"valor":792506.0,"entrada":95100.72,"mensais":3962.53,"intermediarias":35662.77,"saldo":396253.0},{"unidade":"511","posicao":"N","area":78.07,"valorM2":16362.39,"valor":1277411.52,"entrada":153289.38,"mensais":6387.06,"intermediarias":57483.52,"saldo":638705.76},{"unidade":"512","posicao":"P","area":48.59,"valorM2":16270.0,"valor":790559.3,"entrada":94867.12,"mensais":3952.8,"intermediarias":35575.17,"saldo":395279.65},{"unidade":"513","posicao":"N","area":53.48,"valorM2":16362.39,"valor":875060.43,"entrada":105007.25,"mensais":4375.3,"intermediarias":39377.72,"saldo":437530.22},{"unidade":"514","posicao":"P","area":60.33,"valorM2":16257.5,"valor":980814.94,"entrada":117697.79,"mensais":4904.07,"intermediarias":44136.67,"saldo":490407.47},{"unidade":"515","posicao":"N","area":99.93,"valorM2":16362.39,"valor":1635093.29,"entrada":196211.19,"mensais":8175.47,"intermediarias":73579.2,"saldo":817546.64},{"unidade":"516","posicao":"P","area":58.45,"valorM2":16257.5,"valor":950250.84,"entrada":114030.1,"mensais":4751.25,"intermediarias":42761.29,"saldo":475125.42},{"unidade":"517","posicao":"N","area":100.29,"valorM2":16362.39,"valor":1640983.75,"entrada":196918.05,"mensais":8204.92,"intermediarias":73844.27,"saldo":820491.87},{"unidade":"518","posicao":"P","area":51.43,"valorM2":16280.0,"valor":837280.4,"entrada":100473.65,"mensais":4186.4,"intermediarias":37677.62,"saldo":418640.2},{"unidade":"519","posicao":"N","area":53.48,"valorM2":16362.39,"valor":875060.43,"entrada":105007.25,"mensais":4375.3,"intermediarias":39377.72,"saldo":437530.22},{"unidade":"520","posicao":"P","area":53.48,"valorM2":16257.5,"valor":869451.07,"entrada":104334.13,"mensais":4347.26,"intermediarias":39125.3,"saldo":434725.54},{"unidade":"521","posicao":"N","area":84.01,"valorM2":16771.03,"valor":1408933.95,"entrada":169072.07,"mensais":7044.67,"intermediarias":63402.03,"saldo":704466.98},{"unidade":"522","posicao":"P","area":84.01,"valorM2":16452.59,"valor":1382182.04,"entrada":165861.84,"mensais":6910.91,"intermediarias":62198.19,"saldo":691091.02},{"unidade":"601","posicao":"N","area":75.11,"valorM2":16771.03,"valor":1259671.81,"entrada":151160.62,"mensais":6298.36,"intermediarias":56685.23,"saldo":629835.91},{"unidade":"602","posicao":"P","area":72.57,"valorM2":16452.59,"valor":1193964.42,"entrada":143275.73,"mensais":5969.82,"intermediarias":53728.4,"saldo":596982.21},{"unidade":"603","posicao":"N","area":60.78,"valorM2":16558.74,"valor":1006439.92,"entrada":120772.79,"mensais":5032.2,"intermediarias":45289.8,"saldo":503219.96},{"unidade":"604","posicao":"P","area":60.78,"valorM2":16452.59,"valor":999988.39,"entrada":119998.61,"mensais":4999.94,"intermediarias":44999.48,"saldo":499994.19},{"unidade":"605","posicao":"N","area":60.78,"valorM2":16558.74,"valor":1006439.92,"entrada":120772.79,"mensais":5032.2,"intermediarias":45289.8,"saldo":503219.96},{"unidade":"606","posicao":"P","area":64.52,"valorM2":16452.59,"valor":1061521.07,"entrada":127382.53,"mensais":5307.61,"intermediarias":47768.45,"saldo":530760.54},{"unidade":"607","posicao":"N","area":60.78,"valorM2":16558.74,"valor":1006439.92,"entrada":120772.79,"mensais":5032.2,"intermediarias":45289.8,"saldo":503219.96},{"unidade":"608","posicao":"P","area":69.77,"valorM2":16452.59,"valor":1147897.17,"entrada":137747.66,"mensais":5739.49,"intermediarias":51655.37,"saldo":573948.58},{"unidade":"609","posicao":"N","area":93.47,"valorM2":16558.74,"valor":1547744.98,"entrada":185729.4,"mensais":7738.72,"intermediarias":69648.52,"saldo":773872.49},{"unidade":"610","posicao":"P","area":48.62,"valorM2":16520.0,"valor":803202.4,"entrada":96384.29,"mensais":4016.01,"intermediarias":36144.11,"saldo":401601.2},{"unidade":"611","posicao":"N","area":78.07,"valorM2":16558.74,"valor":1292740.46,"entrada":155128.85,"mensais":6463.7,"intermediarias":58173.32,"saldo":646370.23},{"unidade":"612","posicao":"P","area":48.59,"valorM2":16480.0,"valor":800763.2,"entrada":96091.58,"mensais":4003.82,"intermediarias":36034.34,"saldo":400381.6},{"unidade":"613","posicao":"N","area":53.48,"valorM2":16558.74,"valor":885561.16,"entrada":106267.34,"mensais":4427.81,"intermediarias":39850.25,"saldo":442780.58},{"unidade":"614","posicao":"P","area":60.33,"valorM2":16452.59,"valor":992584.72,"entrada":119110.17,"mensais":4962.92,"intermediarias":44666.31,"saldo":496292.36},{"unidade":"615","posicao":"N","area":99.93,"valorM2":16558.74,"valor":1654714.41,"entrada":198565.73,"mensais":8273.57,"intermediarias":74462.15,"saldo":827357.2},{"unidade":"616","posicao":"P","area":58.45,"valorM2":16452.59,"valor":961653.85,"entrada":115398.46,"mensais":4808.27,"intermediarias":43274.42,"saldo":480826.93},{"unidade":"617","posicao":"N","area":100.29,"valorM2":16558.74,"valor":1660675.55,"entrada":199281.07,"mensais":8303.38,"intermediarias":74730.4,"saldo":830337.78},{"unidade":"618","posicao":"P","area":51.43,"valorM2":16490.0,"valor":848080.7,"entrada":101769.68,"mensais":4240.4,"intermediarias":38163.63,"saldo":424040.35},{"unidade":"619","posicao":"N","area":53.48,"valorM2":16558.74,"valor":885561.16,"entrada":106267.34,"mensais":4427.81,"intermediarias":39850.25,"saldo":442780.58},{"unidade":"620","posicao":"P","area":53.48,"valorM2":16452.59,"valor":879884.48,"entrada":105586.14,"mensais":4399.42,"intermediarias":39594.8,"saldo":439942.24},{"unidade":"621","posicao":"N","area":84.01,"valorM2":16972.28,"valor":1425841.16,"entrada":171100.94,"mensais":7129.21,"intermediarias":64162.85,"saldo":712920.58},{"unidade":"622","posicao":"P","area":84.01,"valorM2":16650.02,"valor":1398768.22,"entrada":167852.19,"mensais":6993.84,"intermediarias":62944.57,"saldo":699384.11},{"unidade":"701","posicao":"N","area":75.11,"valorM2":16972.28,"valor":1274787.87,"entrada":152974.54,"mensais":6373.94,"intermediarias":57365.45,"saldo":637393.94},{"unidade":"702","posicao":"P","area":72.57,"valorM2":16650.02,"valor":1208291.99,"entrada":144995.04,"mensais":6041.46,"intermediarias":54373.14,"saldo":604145.99},{"unidade":"703","posicao":"N","area":60.78,"valorM2":16757.44,"valor":1018517.2,"entrada":122222.06,"mensais":5092.59,"intermediarias":45833.27,"saldo":509258.6},{"unidade":"704","posicao":"P","area":60.78,"valorM2":16650.02,"valor":1011988.25,"entrada":121438.59,"mensais":5059.94,"intermediarias":45539.47,"saldo":505994.12},{"unidade":"705","posicao":"N","area":60.78,"valorM2":16757.44,"valor":1018517.2,"entrada":122222.06,"mensais":5092.59,"intermediarias":45833.27,"saldo":509258.6},{"unidade":"706","posicao":"P","area":64.52,"valorM2":16650.02,"valor":1074259.32,"entrada":128911.12,"mensais":5371.3,"intermediarias":48341.67,"saldo":537129.66},{"unidade":"707","posicao":"N","area":60.78,"valorM2":16757.44,"valor":1018517.2,"entrada":122222.06,"mensais":5092.59,"intermediarias":45833.27,"saldo":509258.6},{"unidade":"708","posicao":"P","area":69.77,"valorM2":16650.02,"valor":1161671.93,"entrada":139400.63,"mensais":5808.36,"intermediarias":52275.24,"saldo":580835.97},{"unidade":"709","posicao":"N","area":93.47,"valorM2":16757.44,"valor":1566317.92,"entrada":187958.15,"mensais":7831.59,"intermediarias":70484.31,"saldo":783158.96},{"unidade":"710","posicao":"P","area":48.62,"valorM2":16730.0,"valor":813412.6,"entrada":97609.51,"mensais":4067.06,"intermediarias":36603.57,"saldo":406706.3},{"unidade":"711","posicao":"N","area":78.07,"valorM2":16757.44,"valor":1308253.34,"entrada":156990.4,"mensais":6541.27,"intermediarias":58871.4,"saldo":654126.67},{"unidade":"712","posicao":"P","area":48.59,"valorM2":16690.0,"valor":810967.1,"entrada":97316.05,"mensais":4054.84,"intermediarias":36493.52,"saldo":405483.55},{"unidade":"713","posicao":"N","area":53.48,"valorM2":16757.44,"valor":896187.89,"entrada":107542.55,"mensais":4480.94,"intermediarias":40328.46,"saldo":448093.95},{"unidade":"714","posicao":"P","area":60.33,"valorM2":16650.02,"valor":1004495.74,"entrada":120539.49,"mensais":5022.48,"intermediarias":45202.31,"saldo":502247.87},{"unidade":"715","posicao":"N","area":99.93,"valorM2":16757.44,"valor":1674570.98,"entrada":200948.52,"mensais":8372.85,"intermediarias":75355.69,"saldo":837285.49},{"unidade":"716","posicao":"P","area":58.45,"valorM2":16650.02,"valor":973193.7,"entrada":116783.24,"mensais":4865.97,"intermediarias":43793.72,"saldo":486596.85},{"unidade":"717","posicao":"N","area":100.29,"valorM2":16757.44,"valor":1680603.66,"entrada":201672.44,"mensais":8403.02,"intermediarias":75627.16,"saldo":840301.83},{"unidade":"718","posicao":"P","area":51.43,"valorM2":16690.0,"valor":858366.7,"entrada":103004.0,"mensais":4291.83,"intermediarias":38626.5,"saldo":429183.35},{"unidade":"719","posicao":"N","area":53.48,"valorM2":16757.44,"valor":896187.89,"entrada":107542.55,"mensais":4480.94,"intermediarias":40328.46,"saldo":448093.95},{"unidade":"720","posicao":"P","area":53.48,"valorM2":16650.02,"valor":890443.1,"entrada":106853.17,"mensais":4452.22,"intermediarias":40069.94,"saldo":445221.55},{"unidade":"721","posicao":"N","area":84.01,"valorM2":17175.95,"valor":1442951.25,"entrada":173154.15,"mensais":7214.76,"intermediarias":64932.81,"saldo":721475.63},{"unidade":"722","posicao":"P","area":84.01,"valorM2":16849.82,"valor":1415553.44,"entrada":169866.41,"mensais":7077.77,"intermediarias":63699.9,"saldo":707776.72},{"unidade":"801","posicao":"N","area":75.11,"valorM2":17175.95,"valor":1290085.33,"entrada":154810.24,"mensais":6450.43,"intermediarias":58053.84,"saldo":645042.66},{"unidade":"802","posicao":"P","area":72.57,"valorM2":16849.82,"valor":1222791.49,"entrada":146734.98,"mensais":6113.96,"intermediarias":55025.62,"saldo":611395.75},{"unidade":"803","posicao":"N","area":60.78,"valorM2":16958.53,"valor":1030739.41,"entrada":123688.73,"mensais":5153.7,"intermediarias":46383.27,"saldo":515369.71},{"unidade":"804","posicao":"P","area":60.78,"valorM2":16849.82,"valor":1024132.11,"entrada":122895.85,"mensais":5120.66,"intermediarias":46085.94,"saldo":512066.05},{"unidade":"805","posicao":"N","area":60.78,"valorM2":16958.53,"valor":1030739.41,"entrada":123688.73,"mensais":5153.7,"intermediarias":46383.27,"saldo":515369.71},{"unidade":"806","posicao":"P","area":64.52,"valorM2":16849.82,"valor":1087150.44,"entrada":130458.05,"mensais":5435.75,"intermediarias":48921.77,"saldo":543575.22},{"unidade":"807","posicao":"N","area":60.78,"valorM2":16958.53,"valor":1030739.41,"entrada":123688.73,"mensais":5153.7,"intermediarias":46383.27,"saldo":515369.71},{"unidade":"808","posicao":"P","area":69.77,"valorM2":16849.82,"valor":1175612.0,"entrada":141073.44,"mensais":5878.06,"intermediarias":52902.54,"saldo":587806.0},{"unidade":"809","posicao":"N","area":93.47,"valorM2":16958.53,"valor":1585113.73,"entrada":190213.65,"mensais":7925.57,"intermediarias":71330.12,"saldo":792556.87},{"unidade":"810","posicao":"P","area":48.62,"valorM2":16950.0,"valor":824109.0,"entrada":98893.08,"mensais":4120.55,"intermediarias":37084.9,"saldo":412054.5},{"unidade":"811","posicao":"N","area":78.07,"valorM2":16958.53,"valor":1323952.38,"entrada":158874.29,"mensais":6619.76,"intermediarias":59577.86,"saldo":661976.19},{"unidade":"812","posicao":"P","area":48.59,"valorM2":16900.0,"valor":821171.0,"entrada":98540.52,"mensais":4105.86,"intermediarias":36952.69,"saldo":410585.5},{"unidade":"813","posicao":"N","area":53.48,"valorM2":16958.53,"valor":906942.15,"entrada":108833.06,"mensais":4534.71,"intermediarias":40812.4,"saldo":453471.07},{"unidade":"814","posicao":"P","area":60.33,"valorM2":16849.82,"valor":1016549.69,"entrada":121985.96,"mensais":5082.75,"intermediarias":45744.74,"saldo":508274.84},{"unidade":"815","posicao":"N","area":99.93,"valorM2":16958.53,"valor":1694665.83,"entrada":203359.9,"mensais":8473.33,"intermediarias":76259.96,"saldo":847332.92},{"unidade":"816","posicao":"P","area":58.45,"valorM2":16849.82,"valor":984872.02,"entrada":118184.64,"mensais":4924.36,"intermediarias":44319.24,"saldo":492436.01},{"unidade":"817","posicao":"N","area":100.29,"valorM2":16958.53,"valor":1700770.9,"entrada":204092.51,"mensais":8503.85,"intermediarias":76534.69,"saldo":850385.45},{"unidade":"818","posicao":"P","area":51.43,"valorM2":16890.0,"valor":868652.7,"entrada":104238.32,"mensais":4343.26,"intermediarias":39089.37,"saldo":434326.35},{"unidade":"819","posicao":"N","area":53.48,"valorM2":16958.53,"valor":906942.15,"entrada":108833.06,"mensais":4534.71,"intermediarias":40812.4,"saldo":453471.07},{"unidade":"820","posicao":"P","area":53.48,"valorM2":16849.82,"valor":901128.41,"entrada":108135.41,"mensais":4505.64,"intermediarias":40550.78,"saldo":450564.21},{"unidade":"821","posicao":"N","area":84.01,"valorM2":17382.06,"valor":1460266.67,"entrada":175232.0,"mensais":7301.33,"intermediarias":65712.0,"saldo":730133.33},{"unidade":"822","posicao":"P","area":84.01,"valorM2":17052.02,"valor":1432540.08,"entrada":171904.81,"mensais":7162.7,"intermediarias":64464.3,"saldo":716270.04},{"unidade":"901","posicao":"N","area":75.11,"valorM2":17382.06,"valor":1305566.35,"entrada":156667.96,"mensais":6527.83,"intermediarias":58750.49,"saldo":652783.18},{"unidade":"902","posicao":"P","area":72.57,"valorM2":17052.02,"valor":1237464.99,"entrada":148495.8,"mensais":6187.32,"intermediarias":55685.92,"saldo":618732.5},{"unidade":"903","posicao":"N","area":60.78,"valorM2":17162.03,"valor":1043108.28,"entrada":125172.99,"mensais":5215.54,"intermediarias":46939.87,"saldo":521554.14},{"unidade":"904","posicao":"P","area":60.78,"valorM2":17052.02,"valor":1036421.69,"entrada":124370.6,"mensais":5182.11,"intermediarias":46638.98,"saldo":518210.85},{"unidade":"905","posicao":"N","area":60.78,"valorM2":17162.03,"valor":1043108.28,"entrada":125172.99,"mensais":5215.54,"intermediarias":46939.87,"saldo":521554.14},{"unidade":"906","posicao":"P","area":64.52,"valorM2":17052.02,"valor":1100196.24,"entrada":132023.55,"mensais":5500.98,"intermediarias":49508.83,"saldo":550098.12},{"unidade":"907","posicao":"N","area":60.78,"valorM2":17162.03,"valor":1043108.28,"entrada":125172.99,"mensais":5215.54,"intermediarias":46939.87,"saldo":521554.14},{"unidade":"908","posicao":"P","area":69.77,"valorM2":17052.02,"valor":1189719.34,"entrada":142766.32,"mensais":5948.6,"intermediarias":53537.37,"saldo":594859.67},{"unidade":"909","posicao":"N","area":93.47,"valorM2":17162.03,"valor":1604135.1,"entrada":192496.21,"mensais":8020.68,"intermediarias":72186.08,"saldo":802067.55},{"unidade":"910","posicao":"P","area":48.62,"valorM2":17160.0,"valor":834319.2,"entrada":100118.3,"mensais":4171.6,"intermediarias":37544.36,"saldo":417159.6},{"unidade":"911","posicao":"N","area":78.07,"valorM2":17162.03,"valor":1339839.81,"entrada":160780.78,"mensais":6699.2,"intermediarias":60292.79,"saldo":669919.91},{"unidade":"912","posicao":"P","area":48.59,"valorM2":17108.0,"valor":831277.72,"entrada":99753.33,"mensais":4156.39,"intermediarias":37407.5,"saldo":415638.86},{"unidade":"913","posicao":"N","area":53.48,"valorM2":17162.03,"valor":917825.45,"entrada":110139.05,"mensais":4589.13,"intermediarias":41302.15,"saldo":458912.73},{"unidade":"914","posicao":"P","area":60.33,"valorM2":17052.02,"valor":1028748.28,"entrada":123449.79,"mensais":5143.74,"intermediarias":46293.67,"saldo":514374.14},{"unidade":"915","posicao":"N","area":99.93,"valorM2":17162.03,"valor":1715001.82,"entrada":205800.22,"mensais":8575.01,"intermediarias":77175.08,"saldo":857500.91},{"unidade":"916","posicao":"P","area":58.45,"valorM2":17052.02,"valor":996690.49,"entrada":119602.86,"mensais":4983.45,"intermediarias":44851.07,"saldo":498345.24},{"unidade":"917","posicao":"N","area":100.29,"valorM2":17162.03,"valor":1721180.15,"entrada":206541.62,"mensais":8605.9,"intermediarias":77453.11,"saldo":860590.08},{"unidade":"918","posicao":"P","area":51.43,"valorM2":17090.0,"valor":878938.7,"entrada":105472.64,"mensais":4394.69,"intermediarias":39552.24,"saldo":439469.35},{"unidade":"919","posicao":"N","area":53.48,"valorM2":17162.03,"valor":917825.45,"entrada":110139.05,"mensais":4589.13,"intermediarias":41302.15,"saldo":458912.73},{"unidade":"920","posicao":"P","area":53.48,"valorM2":17052.02,"valor":911941.96,"entrada":109433.03,"mensais":4559.71,"intermediarias":41037.39,"saldo":455970.98},{"unidade":"921","posicao":"N","area":84.01,"valorM2":17590.64,"valor":1477789.87,"entrada":177334.78,"mensais":7388.95,"intermediarias":66500.54,"saldo":738894.93},{"unidade":"922","posicao":"P","area":84.01,"valorM2":17256.64,"valor":1449730.57,"entrada":173967.67,"mensais":7248.65,"intermediarias":65237.88,"saldo":724865.28},{"unidade":"1001","posicao":"N","area":75.11,"valorM2":16286.75,"valor":1223297.79,"entrada":146795.74,"mensais":6116.49,"intermediarias":55048.4,"saldo":611648.9},{"unidade":"1002","posicao":"P","area":72.57,"valorM2":16286.75,"valor":1181929.45,"entrada":141831.53,"mensais":5909.65,"intermediarias":53186.83,"saldo":590964.72},{"unidade":"1003","posicao":"N","area":60.78,"valorM2":16286.75,"valor":989908.67,"entrada":118789.04,"mensais":4949.54,"intermediarias":44545.89,"saldo":494954.33},{"unidade":"1004","posicao":"P","area":60.78,"valorM2":16286.75,"valor":989908.67,"entrada":118789.04,"mensais":4949.54,"intermediarias":44545.89,"saldo":494954.33},{"unidade":"1005","posicao":"N","area":60.78,"valorM2":11400.0,"valor":692892.0,"entrada":83147.04,"mensais":3464.46,"intermediarias":31180.14,"saldo":346446.0},{"unidade":"1006","posicao":"P","area":64.52,"valorM2":11400.0,"valor":735528.0,"entrada":88263.36,"mensais":3677.64,"intermediarias":33098.76,"saldo":367764.0},{"unidade":"1007","posicao":"N","area":60.78,"valorM2":11400.0,"valor":692892.0,"entrada":83147.04,"mensais":3464.46,"intermediarias":31180.14,"saldo":346446.0},{"unidade":"1008","posicao":"P","area":69.77,"valorM2":11400.0,"valor":795378.0,"entrada":95445.36,"mensais":3976.89,"intermediarias":35792.01,"saldo":397689.0},{"unidade":"1009","posicao":"N","area":93.47,"valorM2":11400.0,"valor":1065558.0,"entrada":127866.96,"mensais":5327.79,"intermediarias":47950.11,"saldo":532779.0},{"unidade":"1010","posicao":"P","area":48.62,"valorM2":11400.0,"valor":554268.0,"entrada":66512.16,"mensais":2771.34,"intermediarias":24942.06,"saldo":277134.0},{"unidade":"1011","posicao":"N","area":78.07,"valorM2":11400.0,"valor":889998.0,"entrada":106799.76,"mensais":4449.99,"intermediarias":40049.91,"saldo":444999.0},{"unidade":"1012","posicao":"P","area":48.59,"valorM2":11400.0,"valor":553926.0,"entrada":66471.12,"mensais":2769.63,"intermediarias":24926.67,"saldo":276963.0},{"unidade":"1013","posicao":"N","area":53.48,"valorM2":11400.0,"valor":609672.0,"entrada":73160.64,"mensais":3048.36,"intermediarias":27435.24,"saldo":304836.0},{"unidade":"1014","posicao":"P","area":60.33,"valorM2":11400.0,"valor":687762.0,"entrada":82531.44,"mensais":3438.81,"intermediarias":30949.29,"saldo":343881.0},{"unidade":"1015","posicao":"N","area":99.93,"valorM2":11400.0,"valor":1139202.0,"entrada":136704.24,"mensais":5696.01,"intermediarias":51264.09,"saldo":569601.0},{"unidade":"1016","posicao":"P","area":58.45,"valorM2":11400.0,"valor":666330.0,"entrada":79959.6,"mensais":3331.65,"intermediarias":29984.85,"saldo":333165.0},{"unidade":"1017","posicao":"N","area":100.29,"valorM2":11400.0,"valor":1143306.0,"entrada":137196.72,"mensais":5716.53,"intermediarias":51448.77,"saldo":571653.0},{"unidade":"1018","posicao":"P","area":51.43,"valorM2":11400.0,"valor":586302.0,"entrada":70356.24,"mensais":2931.51,"intermediarias":26383.59,"saldo":293151.0},{"unidade":"1019","posicao":"N","area":53.48,"valorM2":11400.0,"valor":609672.0,"entrada":73160.64,"mensais":3048.36,"intermediarias":27435.24,"saldo":304836.0},{"unidade":"1020","posicao":"P","area":53.48,"valorM2":11400.0,"valor":609672.0,"entrada":73160.64,"mensais":3048.36,"intermediarias":27435.24,"saldo":304836.0},{"unidade":"1021","posicao":"N","area":84.01,"valorM2":11400.0,"valor":957714.0,"entrada":114925.68,"mensais":4788.57,"intermediarias":43097.13,"saldo":478857.0},{"unidade":"1022","posicao":"P","area":84.01,"valorM2":11400.0,"valor":957714.0,"entrada":114925.68,"mensais":4788.57,"intermediarias":43097.13,"saldo":478857.0}];
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtMoney = v => 'R$ ' + fmt(v);
+
+function addMonths(dateStr, months) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1 + months, d);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  const [y,m,d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  LOGO
+// ═══════════════════════════════════════════════════════
+function loadLogo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const box = document.getElementById('logoBox');
+    box.innerHTML = `<img src="${ev.target.result}" alt="Logo">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Set today as default dates
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('dataProposta').value = today;
+  document.getElementById('dataInicio').value = today;
+
+  // Populate floors
+  const floors = [...new Set(UNITS.map(u => String(u.unidade).slice(0,-2) || '1'))].sort((a,b)=>+a-+b);
+  const sel = document.getElementById('selAndar');
+  floors.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f;
+    opt.text = `${f}º Andar`;
+    sel.appendChild(opt);
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  UNIT SELECTION
+// ═══════════════════════════════════════════════════════
+function getFloor(unidade) {
+  return String(unidade).slice(0, -2) || '1';
+}
+
+function updateUnidades() {
+  const andar = document.getElementById('selAndar').value;
+  const selU = document.getElementById('selUnidade');
+  selU.innerHTML = '<option value="">— Selecione a unidade —</option>';
+  selU.disabled = !andar;
+  document.getElementById('unitInfo').classList.remove('visible');
+  if (!andar) return;
+  const units = UNITS.filter(u => getFloor(u.unidade) === andar);
+  units.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u.unidade;
+    opt.text = `Unidade ${u.unidade} – ${u.area}m²`;
+    selU.appendChild(opt);
+  });
+  selU.disabled = false;
+}
+
+function onUnidadeSelected() {
+  const unid = document.getElementById('selUnidade').value;
+  if (!unid) { document.getElementById('unitInfo').classList.remove('visible'); return; }
+  const u = UNITS.find(x => x.unidade === unid);
+  document.getElementById('infoArea').textContent = u.area + ' m²';
+  document.getElementById('infoValorM2').textContent = fmtMoney(u.valorM2);
+  document.getElementById('infoValor').textContent = fmtMoney(u.valor);
+  document.getElementById('unitInfo').classList.add('visible');
+  recalcConditions();
+}
+
+// ═══════════════════════════════════════════════════════
+//  RECALC CONDITIONS
+// ═══════════════════════════════════════════════════════
+function recalcConditions() {
+  const unid = document.getElementById('selUnidade').value;
+  if (!unid) return;
+  const u = UNITS.find(x => x.unidade === unid);
+  const v = u.valor;
+  document.getElementById('tblEntrada').textContent    = fmtMoney(u.entrada);
+  document.getElementById('tblQtdEntrada').textContent = '1x';
+  document.getElementById('tblPctEntrada').textContent = ((u.entrada/v)*100).toFixed(1)+'%';
+  document.getElementById('tblMensais').textContent    = fmtMoney(u.mensais);
+  document.getElementById('tblQtdMensais').textContent = '40x';
+  document.getElementById('tblPctMensais').textContent = ((u.mensais*40/v)*100).toFixed(1)+'%';
+  document.getElementById('tblInterm').textContent    = fmtMoney(u.intermediarias);
+  document.getElementById('tblQtdInterm').textContent = '4x';
+  document.getElementById('tblPctInterm').textContent = ((u.intermediarias*4/v)*100).toFixed(1)+'%';
+  document.getElementById('tblSaldo').textContent    = fmtMoney(u.saldo);
+  document.getElementById('tblQtdSaldo').textContent = '1x';
+  document.getElementById('tblPctSaldo').textContent = ((u.saldo/v)*100).toFixed(1)+'%';
+  document.getElementById('custEntrada').value = fmt(u.entrada);
+  document.getElementById('qtdEntrada').value  = 1;
+  document.getElementById('custMensais').value = fmt(u.mensais);
+  document.getElementById('qtdMensais').value  = 40;
+  document.getElementById('custInterm').value  = fmt(u.intermediarias);
+  document.getElementById('qtdInterm').value   = 4;
+  document.getElementById('custSaldo').value   = fmt(u.saldo);
+  document.getElementById('qtdSaldo').value    = 1;
+  ['entrada','mensais','interm','saldo'].forEach(recalcFromValue);
+}
+
+function parseVal(str) {
+  if (!str) return 0;
+  return parseFloat(String(str).replace(/R\$\s*/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function recalcFromValue(tipo) {
+  const unid = document.getElementById('selUnidade').value;
+  if (!unid) return;
+  const valor = UNITS.find(x => x.unidade === unid).valor;
+  const map = {
+    entrada: ['custEntrada','qtdEntrada','pctEntrada'],
+    mensais: ['custMensais','qtdMensais','pctMensais'],
+    interm:  ['custInterm', 'qtdInterm', 'pctInterm'],
+    saldo:   ['custSaldo',  'qtdSaldo',  'pctSaldo'],
+  };
+  const [cId,qId,pId] = map[tipo];
+  const vp  = parseVal(document.getElementById(cId).value);
+  const qtd = +document.getElementById(qId).value || 1;
+  document.getElementById(pId).value = valor > 0 ? ((vp*qtd/valor)*100).toFixed(2)+'%' : '0.00%';
+  const tE = parseVal(document.getElementById('custEntrada').value) * (+document.getElementById('qtdEntrada').value||1);
+  const tM = parseVal(document.getElementById('custMensais').value) * (+document.getElementById('qtdMensais').value||1);
+  const tI = parseVal(document.getElementById('custInterm').value)  * (+document.getElementById('qtdInterm').value||0);
+  const tS = parseVal(document.getElementById('custSaldo').value)   * (+document.getElementById('qtdSaldo').value||1);
+  const totalPct = (tE+tM+tI+tS)/valor*100;
+  const warn = document.getElementById('pctWarning');
+  if (Math.abs(totalPct-100) > 0.5) {
+    warn.style.display = 'block';
+    warn.textContent = `⚠️ Atenção: a soma dos valores é ${totalPct.toFixed(1)}% do valor da unidade (deveria ser 100%).`;
+  } else { warn.style.display = 'none'; }
+}
+
+function simular() {
+  const unid = document.getElementById('selUnidade').value;
+  if (!unid) { alert('Selecione uma unidade primeiro.'); return; }
+
+  const u    = UNITS.find(x => x.unidade === unid);
+  const valor = u.valor;
+  const dataInicio = document.getElementById('dataInicio').value;
+  if (!dataInicio) { alert('Informe a data do 1º pagamento.'); return; }
+
+  const qE = +document.getElementById('qtdEntrada').value || 1;
+  const qM = +document.getElementById('qtdMensais').value || 1;
+  const qI = +document.getElementById('qtdInterm').value || 0;
+  const qS = +document.getElementById('qtdSaldo').value || 1;
+
+  const valE = parseVal(document.getElementById('custEntrada').value);
+  const valM = parseVal(document.getElementById('custMensais').value);
+  const valI = qI > 0 ? parseVal(document.getElementById('custInterm').value) : 0;
+  const valS = parseVal(document.getElementById('custSaldo').value);
+
+  // Build schedule rows
+  const rows = [];
+
+  // Entrada parcelas – starting from dataInicio, monthly
+  for (let i = 0; i < qE; i++) {
+    rows.push({ date: addMonths(dataInicio, i), tipo: 'entrada', label: `Entrada ${qE>1?i+1+'/'+qE:''}`, valor: valE });
+  }
+
+  // Mensais – start one month after last entrada
+  const mensaisStart = addMonths(dataInicio, qE);
+  for (let i = 0; i < qM; i++) {
+    rows.push({ date: addMonths(mensaisStart, i), tipo: 'mensal', label: `Mensal ${i+1}/${qM}`, valor: valM });
+  }
+
+  // Intermediárias – evenly distributed along mensais period
+  if (qI > 0) {
+    const interval = Math.floor(qM / (qI + 1));
+    for (let i = 0; i < qI; i++) {
+      const monthOffset = interval * (i + 1);
+      rows.push({ date: addMonths(mensaisStart, monthOffset - 1), tipo: 'interm', label: `Intermediária ${i+1}/${qI}`, valor: valI });
+    }
+  }
+
+  // Saldo – after all mensais
+  const saldoStart = addMonths(mensaisStart, qM);
+  for (let i = 0; i < qS; i++) {
+    rows.push({ date: addMonths(saldoStart, i), tipo: 'saldo', label: `Saldo Devedor ${qS>1?i+1+'/'+qS:''}`, valor: valS });
+  }
+
+  // Sort by date
+  rows.sort((a,b) => a.date.localeCompare(b.date));
+
+  // Render
+  const tbody = document.getElementById('scheduleBody');
+  tbody.innerHTML = '';
+  let total = 0;
+  rows.forEach((r, idx) => {
+    total += r.valor;
+    const badge = {
+      entrada: '<span class="badge badge-entrada">Entrada</span>',
+      mensal:  '<span class="badge badge-mensal">Mensal</span>',
+      interm:  '<span class="badge badge-interm">Intermediária</span>',
+      saldo:   '<span class="badge badge-saldo">Saldo</span>',
+    }[r.tipo];
+    tbody.innerHTML += `<tr>
+      <td>${idx+1}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${badge} <span style="font-size:12px;color:#666">${r.label}</span></td>
+      <td class="money">${fmt(r.valor)}</td>
+    </tr>`;
+  });
+  document.getElementById('scheduleTotal').textContent = 'R$ ' + fmt(total);
+
+  // Summary bar
+  const totalEntrada = valE * qE;
+  const totalMensais = valM * qM;
+  const totalInterm  = valI * qI;
+  const totalSaldo   = valS * qS;
+  document.getElementById('sumValor').textContent   = fmtMoney(valor);
+  document.getElementById('sumEntrada').textContent = fmtMoney(totalEntrada);
+  document.getElementById('sumMensais').textContent = fmtMoney(totalMensais);
+  document.getElementById('sumInterm').textContent  = fmtMoney(totalInterm);
+  document.getElementById('sumSaldo').textContent   = fmtMoney(totalSaldo);
+  document.getElementById('summaryBar').classList.add('visible');
+  document.getElementById('resultSection').classList.add('visible');
+
+  // Scroll to result
+  document.getElementById('summaryBar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Store for export
+  window._simRows = rows;
+  window._simUnit = u;
+  window._simTotal = total;
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT EXCEL
+// ═══════════════════════════════════════════════════════
+function exportExcel() {
+  if (!window._simRows) { alert('Gere a simulação primeiro.'); return; }
+  const u = window._simUnit;
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Resumo
+  const resumo = [
+    ['SIMULAÇÃO DE COMPRA – CGMC'],
+    [],
+    ['Proponente:', document.getElementById('nomeProponente').value],
+    ['CPF/CNPJ:',  document.getElementById('cpf').value],
+    ['Telefone:',  document.getElementById('telefone').value],
+    ['E-mail:',    document.getElementById('email').value],
+    ['Data da Proposta:', fmtDate(document.getElementById('dataProposta').value)],
+    [],
+    ['Corretor/Imobiliária:', document.getElementById('imobiliaria').value],
+    ['Gestor:', document.getElementById('gestorHVM').value],
+    [],
+    ['UNIDADE SELECIONADA'],
+    ['Unidade:', u.unidade],
+    ['Andar:', getFloor(u.unidade) + 'º'],
+    ['Área:', u.area + ' m²'],
+    ['Valor m²:', u.valorM2],
+    ['Valor Total:', u.valor],
+    [],
+    ['RESUMO DO PAGAMENTO'],
+    ['Tipo', '% do Valor', 'Qtd Parcelas', 'Valor p/ Parcela', 'Total'],
+    ['Entrada',       document.getElementById('pctEntrada').value, document.getElementById('qtdEntrada').value, parseVal(document.getElementById('custEntrada').value), parseVal(document.getElementById('custEntrada').value)*(+document.getElementById('qtdEntrada').value||1)],
+    ['Mensais',       document.getElementById('pctMensais').value, document.getElementById('qtdMensais').value, parseVal(document.getElementById('custMensais').value), parseVal(document.getElementById('custMensais').value)*(+document.getElementById('qtdMensais').value||1)],
+    ['Intermediárias',document.getElementById('pctInterm').value,  document.getElementById('qtdInterm').value,  parseVal(document.getElementById('custInterm').value),  parseVal(document.getElementById('custInterm').value)*(+document.getElementById('qtdInterm').value||0)],
+    ['Saldo Devedor', document.getElementById('pctSaldo').value,   document.getElementById('qtdSaldo').value,   parseVal(document.getElementById('custSaldo').value),   parseVal(document.getElementById('custSaldo').value)*(+document.getElementById('qtdSaldo').value||1)],
+    [],
+    ['TOTAL GERAL'['TOTAL GERAL', '', '', '', window._simTotal],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = [{wch:22},{wch:16},{wch:16},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  // ── Sheet 2: Fluxo
+  const fluxo = [['#', 'Data', 'Tipo', 'Descrição', 'Valor (R$)']];
+  window._simRows.forEach((r,i) => {
+    fluxo.push([i+1, fmtDate(r.date), {entrada:'Entrada',mensal:'Mensal',interm:'Intermediária',saldo:'Saldo Devedor'}[r.tipo], r.label, r.valor]);
+  });
+  fluxo.push([]);
+  fluxo.push(['','','','TOTAL', window._simTotal]);
+  const ws2 = XLSX.utils.aoa_to_sheet(fluxo);
+  ws2['!cols'] = [{wch:5},{wch:14},{wch:16},{wch:22},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Fluxo de Pagamento');
+
+  const nome = (document.getElementById('nomeProponente').value || 'simulacao').replace(/\s+/g,'_');
+  XLSX.writeFile(wb, `Simulacao_CGMC_${u.unidade}_${nome}.xlsx`);
+}
+</script>
+</body>
+</html>
