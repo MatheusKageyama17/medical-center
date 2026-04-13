@@ -314,19 +314,49 @@
 
   /* ── PRINT STYLES ── */
   @media print {
-    body { background: white; font-size: 12px; }
-    header { background: #1B4F8A !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 12px 20px; }
-    .container { max-width: 100%; padding: 12px; }
-    .card { box-shadow: none; border: 1px solid #CBD8EA; page-break-inside: avoid; margin-bottom: 14px; }
-    .card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .summary-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .no-print, .btn-row { display: none !important; }
-    .result-section { display: block !important; }
-    .summary-bar.visible { display: flex !important; }
-    table { font-size: 11px; }
-    td, th { padding: 6px 8px !important; }
+    body { background: white; font-size: 11px; }
+    header { background: #1B4F8A !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 10px 20px; }
+    .container { max-width: 100%; padding: 8px 14px; }
+    .card { box-shadow: none; border: 1px solid #CBD8EA; page-break-inside: avoid; margin-bottom: 10px; }
+    .card-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 8px 16px; font-size: 13px; }
+    .card-body { padding: 12px 16px; }
+    .form-row { gap: 10px; margin-bottom: 10px; }
+    .field input, .field select { padding: 5px 8px; font-size: 11px; border: 1px solid #bbb; }
+    /* Hide elements not needed in PDF */
+    .no-print, .btn-row,
+    #liveTotalBar, #pctWarning,
+    #summaryBar, #resultSection,
+    #cardCorretor { display: none !important; }
+    /* Show print-only elements */
+    .print-only { display: block !important; }
+    .print-only-flex { display: flex !important; }
+    /* Payment conditions compact */
+    .cond-grid { gap: 10px; }
+    .cond-block h4 { padding: 6px 12px; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .cond-table { padding: 7px 12px; }
+    .cond-table-item span { font-size: 9px; }
+    .cond-table-item strong { font-size: 12px; }
+    .cond-custom { padding: 7px 12px; }
+    .cond-custom label { font-size: 9px; }
+    .cond-custom input { padding: 4px 8px; font-size: 11px; border: 1px solid #bbb; }
+    /* Unit info */
+    .unit-info.visible { display: grid !important; padding: 8px 12px; margin-top: 8px; }
+    /* Print total bar */
+    .print-total-bar { display: flex !important; align-items: center; background: #1B4F8A; color: white; border-radius: 8px; padding: 12px 20px; margin-top: 10px; justify-content: space-between; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .print-total-bar span { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .4px; }
+    .print-total-bar strong { font-size: 22px; font-weight: 800; }
+    /* Signature area */
+    .signature-section { display: flex !important; gap: 40px; margin-top: 36px; padding-top: 16px; }
+    .signature-block { flex: 1; text-align: center; }
+    .signature-line { border-top: 1.5px solid #1B4F8A; margin-bottom: 6px; }
+    .signature-block p { font-size: 11px; color: #4A5A72; }
+    .signature-block .sig-label { font-weight: 700; color: #1B4F8A; font-size: 12px; margin-top: 4px; }
+    /* Disclaimer */
+    .disclaimer { font-size: 10px; margin-top: 10px; }
+    /* Badge colors */
     .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table { font-size: 10px; }
+    td, th { padding: 5px 8px !important; }
   }
 </style>
 </head>
@@ -483,14 +513,15 @@
         </div>
       </div>
 
-      <!-- Data de início -->
-      <div class="start-date-row">
-        <div class="field">
-          <label>Data do 1º Pagamento (Entrada)</label>
-          <input type="date" id="dataInicio">
-        </div>
-      </div>
+      <!-- Data de início (oculto da UI, preenchido automaticamente com hoje) -->
+      <input type="date" id="dataInicio" style="display:none">
     </div>
+  </div>
+
+  <!-- PRINT-ONLY: Total da Proposta -->
+  <div class="print-total-bar" style="display:none" id="printTotalBar">
+    <span>💰 Valor Total da Proposta</span>
+    <strong id="printTotalValor">–</strong>
   </div>
 
   <!-- OBSERVAÇÕES -->
@@ -553,6 +584,25 @@
     <!-- DISCLAIMER -->
     <div class="disclaimer">
       A) As parcelas serão reajustadas pela variação do INCC e, a partir da entrega, pelo IPCA, com base no mês anterior à assinatura do contrato e ao mês anterior a cada evento, conforme contrato. B) Condição válida conforme disponibilidade de unidades. Este documento é uma <strong>simulação de condição de pagamento</strong>, não garantindo a venda. C) Valores sujeitos a alteração sem aviso prévio.
+    </div>
+  </div>
+
+  <!-- PRINT-ONLY: Disclaimer -->
+  <div class="disclaimer print-only" style="display:none">
+    A) As parcelas serão reajustadas pela variação do INCC e, a partir da entrega, pelo IPCA. B) Condição válida conforme disponibilidade de unidades. Este documento é uma <strong>simulação de condição de pagamento</strong>, não garantindo a venda. C) Valores sujeitos a alteração sem aviso prévio.
+  </div>
+
+  <!-- PRINT-ONLY: Assinaturas -->
+  <div class="signature-section" style="display:none">
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <p class="sig-label">Incorporadora</p>
+      <p>CGMC Incorporadora</p>
+    </div>
+    <div class="signature-block">
+      <div class="signature-line"></div>
+      <p class="sig-label">Proponente / Comprador(a)</p>
+      <p id="sigNomeProponente"></p>
     </div>
   </div>
 
@@ -733,6 +783,12 @@ function recalcFromValue(tipo) {
     diffLbl.textContent = '⬇️ Abaixo do valor';
     diffCell.classList.add('error');
   }
+
+  // Sync print-only total bar
+  document.getElementById('printTotalValor').textContent = fmtMoney(totalProposta);
+  // Sync signature name
+  const nomeEl = document.getElementById('sigNomeProponente');
+  if (nomeEl) nomeEl.textContent = document.getElementById('nomeProponente').value || '___________________________';
 }
 
 function simular() {
