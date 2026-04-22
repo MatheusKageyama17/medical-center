@@ -693,7 +693,6 @@ function onUnidadeSelected() {
   if (!unid) { document.getElementById('unitInfo').classList.remove('visible'); return; }
   const u = UNITS.find(x => x.unidade === unid);
   document.getElementById('infoArea').textContent = u.area + ' m²';
-  document.getElementById('infoValorM2').textContent = fmtMoney(u.valorM2);
   document.getElementById('infoValor').textContent = fmtMoney(u.valor);
   document.getElementById('unitInfo').classList.add('visible');
   recalcConditions();
@@ -910,7 +909,6 @@ function exportExcel() {
     ['Unidade:', u.unidade],
     ['Andar:', getFloor(u.unidade) + 'º'],
     ['Área:', u.area + ' m²'],
-    ['Valor m²:', u.valorM2],
     ['Valor Total:', u.valor],
     [],
     ['RESUMO DO PAGAMENTO'],
