@@ -468,7 +468,7 @@
           </div>
           <div class="cond-custom">
             <div class="field"><label>Valor p/ parcela</label><input type="text" id="custMensais" placeholder="0,00" oninput="recalcFromValue('mensais')"></div>
-            <div class="field"><label>Parcelas</label><input type="number" id="qtdMensais" value="40" min="1" max="120" oninput="recalcFromValue('mensais')"></div>
+            <div class="field"><label>Parcelas</label><input type="number" id="qtdMensais" value="37" min="1" max="120" oninput="recalcFromValue('mensais')"></div>
             <div class="field"><label>% Calculado</label><input type="text" id="pctMensais" readonly></div>
           </div>
         </div>
@@ -627,7 +627,7 @@ const UNITS = [{"unidade": "110", "posicao": "P", "area": 48.62, "valorM2": 1596
 
 // Empreendimento config
 const EMPREENDIMENTOS = {
-  medical:     { units: UNITS, name: 'CGMC Medical Center', qtdMensais: 40, qtdInterm: 4 },
+  medical:     { units: UNITS, name: 'CGMC Medical Center', qtdMensais: 37, qtdInterm: 4 },
   residencial: { units: UNITS_RESIDENCIAL, name: 'CGMC Residencial', qtdMensais: 36, qtdInterm: 4 }
 };
 let currentEmpreendimento = 'medical';
