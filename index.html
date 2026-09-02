@@ -627,12 +627,20 @@ const UNITS = [{"unidade": "110", "posicao": "P", "area": 48.62, "valorM2": 1596
 
 // Empreendimento config
 const EMPREENDIMENTOS = {
-  medical:     { units: UNITS, name: 'CGMC Medical Center', qtdMensais: 37, qtdInterm: 4 },
+  medical:     { units: UNITS, name: 'CGMC Medical Center', qtdMensais: 37, qtdMensaisBase: 40, qtdInterm: 4 },
   residencial: { units: UNITS_RESIDENCIAL, name: 'CGMC Residencial', qtdMensais: 36, qtdInterm: 4 }
 };
 let currentEmpreendimento = 'medical';
 function getCurrentUnits() { return EMPREENDIMENTOS[currentEmpreendimento].units; }
 function getQtdMensais()   { return EMPREENDIMENTOS[currentEmpreendimento].qtdMensais; }
+function getQtdMensaisBase() {
+  const e = EMPREENDIMENTOS[currentEmpreendimento];
+  return e.qtdMensaisBase || e.qtdMensais; // fallback se não definido
+}
+// Retorna o valor por parcela ajustado para manter o mesmo total de mensais
+function getMensaisAjustado(valorPorParcelaBase) {
+  return valorPorParcelaBase * getQtdMensaisBase() / getQtdMensais();
+}
 function getQtdInterm()    { return EMPREENDIMENTOS[currentEmpreendimento].qtdInterm; }
 
 
@@ -770,9 +778,10 @@ function recalcConditions() {
   document.getElementById('tblEntrada').textContent    = fmtMoney(u.entrada);
   document.getElementById('tblQtdEntrada').textContent = '1x';
   document.getElementById('tblPctEntrada').textContent = ((u.entrada/v)*100).toFixed(1)+'%';
-  document.getElementById('tblMensais').textContent    = fmtMoney(u.mensais);
+  const mensaisAjustado = getMensaisAjustado(u.mensais);
+  document.getElementById('tblMensais').textContent    = fmtMoney(mensaisAjustado);
   document.getElementById('tblQtdMensais').textContent = getQtdMensais()+'x';
-  document.getElementById('tblPctMensais').textContent = ((u.mensais*getQtdMensais()/v)*100).toFixed(1)+'%';
+  document.getElementById('tblPctMensais').textContent = ((mensaisAjustado*getQtdMensais()/v)*100).toFixed(1)+'%';
   document.getElementById('tblInterm').textContent    = fmtMoney(u.intermediarias);
   document.getElementById('tblQtdInterm').textContent = '4x';
   document.getElementById('tblPctInterm').textContent = ((u.intermediarias*4/v)*100).toFixed(1)+'%';
@@ -781,7 +790,7 @@ function recalcConditions() {
   document.getElementById('tblPctSaldo').textContent = ((u.saldo/v)*100).toFixed(1)+'%';
   document.getElementById('custEntrada').value = fmt(u.entrada);
   document.getElementById('qtdEntrada').value  = 1;
-  document.getElementById('custMensais').value = fmt(u.mensais);
+  document.getElementById('custMensais').value = fmt(mensaisAjustado);
   document.getElementById('qtdMensais').value  = getQtdMensais();
   document.getElementById('custInterm').value  = fmt(u.intermediarias);
   document.getElementById('qtdInterm').value   = 4;
